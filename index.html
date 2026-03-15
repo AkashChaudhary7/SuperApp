@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akash Vault Secure</title>
+    <style>
+        :root { --blue: #00f2ff; --purple: #bc13fe; --bg: #050505; --glass: rgba(255,255,255,0.08); }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; }
+        .container { max-width: 800px; margin: auto; padding: 20px; }
+        
+        header { text-align: center; padding: 40px 0; border-bottom: 1px solid var(--glass); }
+        h1 { text-shadow: 0 0 10px var(--blue); letter-spacing: 2px; }
+
+        /* Form Styling */
+        .box { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid var(--blue); margin-top: 20px; }
+        input, select, button { 
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; 
+            border: 1px solid var(--blue); background: black; color: white; box-sizing: border-box;
+        }
+        button { background: transparent; color: var(--purple); border-color: var(--purple); font-weight: bold; cursor: pointer; }
+        button:hover { background: var(--purple); color: black; }
+
+        /* Search & List */
+        #search { border-color: var(--purple); margin-bottom: 20px; }
+        .file-card { 
+            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; 
+            margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .tag { font-size: 10px; background: var(--blue); color: black; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header><h1>AKASH <span style="color:var(--purple)">VAULT</span> SECURE</h1></header>
+
+<div class="container">
+    <div class="box">
+        <h3>➕ Upload New Document</h3>
+        <input type="text" id="fileName" placeholder="File Name (e.g. My Aadhar Card)">
+        <select id="member">
+            <option value="Akash">Akash</option>
+            <option value="Wife">Wife</option>
+            <option value="Family">Family</option>
+        </select>
+        <input type="file" id="fileInput">
+        <button onclick="uploadToTelegram()">Save to Cloud</button>
+        <p id="status" style="font-size: 12px; color: grey;"></p>
+    </div>
+
+    <div class="box">
+        <h3>🔍 Search Vault</h3>
+        <input type="text" id="search" placeholder="Search by name or member..." onkeyup="renderFiles()">
+        <div id="fileList"></div>
+    </div>
+</div>
+
+<script>
+    // 1. PUT YOUR SECURE DETAILS HERE
+    const BOT_TOKEN = 'PASTE_YOUR_BOT_TOKEN_HERE';
+    const CHAT_ID = 'PASTE_YOUR_CHAT_ID_HERE';
+
+    // Local index to keep track of what we uploaded
+    let myFiles = JSON.parse(localStorage.getItem('akash_vault_index')) || [];
+
+    async function uploadToTelegram() {
+        const fileInput = document.getElementById('fileInput');
+        const name = document.getElementById('fileName').value;
+        const member = document.getElementById('member').value;
+        const status = document.getElementById('status');
+
+        if (!fileInput.files[0] || !name) {
+            alert("Please fill all details");
+            return;
+        }
+
+        status.innerText = "Uploading to Telegram Cloud...";
+
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('document', fileInput.files[0]);
+        formData.append('caption', `📂 NAME: ${name}\n👤 MEMBER: ${member}\n📅 DATE: ${new Date().toLocaleDateString()}`);
+
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Save to local search index
+                myFiles.push({ name, member, date: new Date().toLocaleDateString() });
+                localStorage.setItem('akash_vault_index', JSON.stringify(myFiles));
+                
+                status.innerText = "Successfully saved!";
+                document.getElementById('fileName').value = "";
+                fileInput.value = "";
+                renderFiles();
+            } else {
+                status.innerText = "Error: Check your Token/ID";
+            }
+        } catch (err) {
+            status.innerText = "Network Error";
+        }
+    }
+
+    function renderFiles() {
+        const query = document.getElementById('search').value.toLowerCase();
+        const list = document.getElementById('fileList');
+        list.innerHTML = "";
+
+        const filtered = myFiles.filter(f => 
+            f.name.toLowerCase().includes(query) || 
+            f.member.toLowerCase().includes(query)
+        );
+
+        filtered.reverse().forEach(file => {
+            const div = document.createElement('div');
+            div.className = 'file-card';
+            div.innerHTML = `
+                <div>
+                    <strong>${file.name}</strong><br>
+                    <small>${file.date}</small>
+                </div>
+                <span class="tag">${file.member}</span>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    // Load list on start
+    renderFiles();
+</script>
+
+</body>
+</html>
